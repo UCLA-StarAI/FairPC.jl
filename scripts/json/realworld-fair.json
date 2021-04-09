@@ -1,0 +1,8 @@
+{   "dir" : "exp-results/real-world",
+    "expname" : ["compas", "adult", "german"],
+    "sensitive_variable" : {"adult" : ["sex"],
+                            "compas" : ["Ethnic_Code_Text_"],
+                            "german" : ["sex"]},
+    "struct_type" : ["FairPC","TwoNB","LatNB"],
+    "fold" : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+}
