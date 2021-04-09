@@ -1,5 +1,7 @@
 # FairPC
 
+This repo contains the code and experiments from the paper "[Group Fairness by Probabilistic Modeling with Latent Fair Decisions](http://starai.cs.ucla.edu/papers/ChoiAAAI21.pdf)", published in AAAI 2021.
+
 ## Files
 
 ```
@@ -20,18 +22,18 @@
 
 2. Launch local version of `LogicCircuits.jl` and `ProbabilisticCircuits.jl` library
     1. Open Julia REPL and enter the Pkg REPL-mode using the key `]`.
-    2. Run the following in Pkg mode (change `<dir to code>` to be the corrent path to `LearnFairPSDD.jl`):
+    2. Run the following in Pkg mode (change `<dir to code>` to be the corrent path to `FairPC.jl`):
   ```
-  (v1.5) pkg> dev <dir to code>/LearnFairPSDD.jl/library/LogicCircuits.jl/
-  (v1.5) pkg> dev <dir to code>/LearnFairPSDD.jl/library/ProbabilisticCircuits.jl/
+  (v1.5) pkg> dev <dir to code>/FairPC.jl/library/LogicCircuits.jl/
+  (v1.5) pkg> dev <dir to code>/FairPC.jl/library/ProbabilisticCircuits.jl/
   ```
 
-3. Launch local version of `LearnFairPSDD.jl` code by running:
+3. Launch local version of `FairPC.jl` code by running:
 
 ```
 mkdir  -p ~/.julia/config
 echo -e 'using Distributed\n' > ~/.julia/config/startup.jl
-echo -e '@everywhere push!(LOAD_PATH, "/<dir to code>/LearnFairPSDD.jl")\n' >> ~/.julia/config/startup.jl
+echo -e '@everywhere push!(LOAD_PATH, "/<dir to code>/FairPC.jl")\n' >> ~/.julia/config/startup.jl
 ```
 
 3. Use `Project.toml` to activate a Julia environment with all dependencies Concretely, running the following command in current folder will download and install all required packages.
@@ -73,7 +75,7 @@ $ julia bin/gen_exp.jl scripts/json/synthetic-fair.json
 you can also change `dir` in file `*.json` to the output directory you want.
 
 ### Baselines
-- For `TowNB`,`LatNB`, and `NlatPC`, see above.
+- For `TwoNB`,`LatNB`, and `NlatPC`, see above.
 - For `Reduction`, `Reweight`, and `FairLR` methods, run `fair_reduction.py`, `reweight.py` or `fair_lr.py` respectively(the first two in `python3` and the last in `python2`) in directory `.\baselines` with the following arguments:
 ```
 # usage is the same as above
