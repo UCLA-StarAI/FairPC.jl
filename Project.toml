@@ -1,10 +1,13 @@
 name = "LearnFairPSDD"
+uuid = "9ee29025-cb72-58fb-9090-4a66135659db"
 
 [deps]
+ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 DrWatson = "634d3b9d-ee7a-5ddf-bec9-22491ea816e1"
+GR = "28b8d3ca-fb5f-59d9-8090-bfdbd6d07a71"
 IterTools = "c8e1da08-722c-5040-9ed9-7db0dc04731e"
 JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"

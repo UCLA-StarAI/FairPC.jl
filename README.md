@@ -36,7 +36,7 @@ echo -e 'using Distributed\n' > ~/.julia/config/startup.jl
 echo -e '@everywhere push!(LOAD_PATH, "/<dir to code>/FairPC.jl")\n' >> ~/.julia/config/startup.jl
 ```
 
-3. Use `Project.toml` to activate a Julia environment with all dependencies Concretely, running the following command in current folder will download and install all required packages.
+3. Use `Project.toml` to activate a Julia environment with all dependencies. Concretely, running the following command in current folder will download and install all required packages.
 
 ```
 julia -e 'using Pkg; Pkg.activate("."); Pkg.instantiate(); Pkg.precompile();'
