@@ -18,30 +18,42 @@ This repo contains the code and experiments from the paper "[Group Fairness by P
 
 ## Installation
 
-1. Julia version 1.5
+1. Install Julia version 1.5
+2. Open Julia REPL and enter the Pkg REPL-mode using the key `]`. You should see a prompt :
 
-2. Launch local version of `LogicCircuits.jl` and `ProbabilisticCircuits.jl` library
-    1. Open Julia REPL and enter the Pkg REPL-mode using the key `]`.
-    2. Run the following in Pkg mode (change `<dir to code>` to be the corrent path to `FairPC.jl`):
-  ```
-  (v1.5) pkg> dev <dir to code>/FairPC.jl/library/LogicCircuits.jl/
-  (v1.5) pkg> dev <dir to code>/FairPC.jl/library/ProbabilisticCircuits.jl/
-  ```
+    ```julia
+    (v1.5) pkg>
+    ```
 
-3. Launch local version of `FairPC.jl` code by running:
+3. Run the following in Pkg mode to add local version of `LogicCircuits.jl`, `ProbabilisticCircuits.jl`, and `LearnFairPSDD.jl` libraries. Change `<dir to code>` to be the corrent path to `FairPC.jl`.
 
-```
-mkdir  -p ~/.julia/config
-echo -e 'using Distributed\n' > ~/.julia/config/startup.jl
-echo -e '@everywhere push!(LOAD_PATH, "/<dir to code>/FairPC.jl")\n' >> ~/.julia/config/startup.jl
-```
+    ```julia
+    (v1.5) pkg> dev <dir to code>/FairPC.jl/library/LogicCircuits.jl/
+    (v1.5) pkg> dev <dir to code>/FairPC.jl/library/ProbabilisticCircuits.jl/
+    (v1.5) pkg> dev <dir to code>/FairPC.jl/
+    ```
 
-3. Use `Project.toml` to activate a Julia environment with all dependencies. Concretely, running the following command in current folder will download and install all required packages.
+4. To check if the libraries are correctly linked, run the following should print the paths.
 
-```
-julia -e 'using Pkg; Pkg.activate("."); Pkg.instantiate();'
-julia -e 'using LogicCircuits, ProbabilisticCircuits, LearnFairPSDD'
-```
+    ```julia
+    (v1.5) pkg> status LogicCircuits ProbabilisticCircuits LearnFairPSDD
+    ```
+
+5. To compile the packages, run the following in REPL. This will take around 5 minutes.
+
+    ```julia
+    (v1.5) pkg> using LogicCircuits, ProbabilisticCircuits, LearnFairPSDD
+    ```
+
+    This sould print logs like:
+
+    ```bash
+    [ Info: Precompiling LogicCircuits [a7847b3b-b7f1-4dd5-83c3-60e0aa0f8599]
+    [ Info: Precompiling ProbabilisticCircuits [2396afbe-23d7-11ea-1e05-f1aa98e17a44]
+    [ Info: Precompiling LearnFairPSDD [9ee29025-cb72-58fb-9090-4a66135659db]
+    ```
+
+6. The packages are successfully deployed then!
 
 ## Experiments
 
