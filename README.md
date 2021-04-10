@@ -39,10 +39,10 @@ This repo contains the code and experiments from the paper "[Group Fairness by P
     (v1.5) pkg> status LogicCircuits ProbabilisticCircuits LearnFairPSDD
     ```
 
-5. To compile the packages, run the following in REPL. This will take around 5 minutes.
+5. To compile the packages, run the following in Julia REPL. This will take around 5 minutes.
 
     ```julia
-    (v1.5) pkg> using LogicCircuits, ProbabilisticCircuits, LearnFairPSDD
+    julia> using LogicCircuits, ProbabilisticCircuits, LearnFairPSDD
     ```
 
     This sould print logs like:
