@@ -6,7 +6,7 @@ This repo contains the code and experiments from the paper "[Group Fairness by P
 
 ```
   baselines/    Python scripts to reproduce `Reweight`, `Reduction` and `FairLR`.
-  bin/          Runnable julia srcipts (see below).
+  bin/          Runnable julia scripts (see below).
   circuits/     Learned circuits in experiments.
   data/         Datasets used in the experiments.
   library/      It Includes another two julia library LogicCircuits.jl and ProbabilisticCircuits.jl
