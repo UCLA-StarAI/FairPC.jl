@@ -1,16 +1,13 @@
-# Learn Fair PSDD
+# Learn Fair PC
 
-## Installation
+This repo contains the code and experiments from the paper "[Group Fairness by Probabilistic Modeling with Latent Fair Decisions](http://starai.cs.ucla.edu/papers/ChoiAAAI21.pdf)", published in AAAI 2021.
 
-1. Julia version 1.7
 
-2. Run commands with flag `--project` will automatically use the packages specified in `Project.toml`. See belows scripts for examples.
-
-### Files
+## Files
 
 ```
   baselines/    Python scripts to reproduce `Reweight`, `Reduction` and `FairLR`.
-  bin/          Runnable julia srcipts (see below).
+  bin/          Runnable julia scripts (see below).
   circuits/     Learned circuits in experiments.
   data/         Datasets used in the experiments.
   scripts/      Helper files to generate experiments scripts.
@@ -19,6 +16,11 @@
   README.md     This is this file.
 ```
 
+## Installation
+
+1. Julia version 1.7
+
+2. Run commands with flag `--project` will automatically use the packages specified in `Project.toml`. See belows scripts for examples.
 ## Experiments
 
 ### Usage
@@ -53,7 +55,7 @@ you can also change `dir` in file `*.json` to the output directory you want.
 
 ### Baselines
 - For `TowNB`, `LatNB`, and `NlatPC`, see above.
-- For `Reduction`, `Reweight`, and `FairLR` methods, run `fair_reduction.py`, `reweight.py` or `fair_lr.py` respectively(the first two in `python3` and the last in `python2`) in directory `.\baselines` and following arguments:
+- For `Reduction`, `Reweight`, and `FairLR` methods, run `fair_reduction.py`, `reweight.py` or `fair_lr.py` respectively(the first two in `python3` and the last in `python2`) in directory `.\baselines` with the following arguments:
 ```
 # usage is the same as above
 positional arguments:
@@ -62,9 +64,9 @@ optional arguments:
   --fold
   --num_X
 ```
+
 - Some sample scripts
 ```
-# Reweight
 $ python3 reweight.py compas --fold 1
 $ python2 fair_lr.py synthetic --fold 1 --num_X 30
 $ python3 fair_reduction.py german --fold 2
@@ -73,5 +75,5 @@ $ python3 fair_reduction.py german --fold 2
 ```
 $ julia bin/gen_exp.jl scripts/json/baselines.json --set_id 0 --cmd python3 -b fair_reduction.py
 $ julia bin/gen_exp.jl scripts/json/baselines.json --set_id 0 --cmd python3 -b reweight.py
-$ julia bin/gen_exp.jl scripts/json/fair-baselines.json --set_id 0 --cmd python -b fair_lr.py
+$ julia bin/gen_exp.jl scripts/json/baselines.json --set_id 0 --cmd python -b fair_lr.py
 ```
