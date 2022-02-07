@@ -52,7 +52,7 @@ $ julia --project bin/gen_exp.jl scripts/json/synthetic-fair.json
 you can also change `dir` in file `*.json` to the output directory you want.
 
 ### Baselines
-- For `TowNB`,`LatNB`, and `NlatPC`, see above.
+- For `TowNB`, `LatNB`, and `NlatPC`, see above.
 - For `Reduction`, `Reweight`, and `FairLR` methods, run `fair_reduction.py`, `reweight.py` or `fair_lr.py` respectively(the first two in `python3` and the last in `python2`) in directory `.\baselines` and following arguments:
 ```
 # usage is the same as above
