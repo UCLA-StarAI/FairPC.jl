@@ -212,32 +212,6 @@ function learn_test()
                 struct_type="FairPC")
 end
 
-function all_learned_circuits(;indir="/Users/mhdang/Desktop/Fairnes/FAIRPSDDExp/aaai2021/realworld_fair_10cv_0905")
-    outdir = "./circuits"
-    !isdir(outdir) && mkpath(outdir)
-    for name in DATASET_NAMES[1:3]
-        for fold in 1 : 10
-            configs = read_all_exp_configs(indir; given=Dict("dataset"=>name, "fold"=>fold, "struct_type"=>"FairPC"))
-            @assert length(configs) == 1
-            config = configs[1]
-            pcfile = joinpath(config["root"], "struct", "max-ll")
-            cp(joinpath(pcfile, "$name.psdd"), joinpath(outdir, "$name-$fold.psdd"))
-            cp(joinpath(pcfile, "$name.vtree"), joinpath(outdir, "$name-$fold.vtree"))
-        end
-    end
-    name = "synthetic"
-    indir = indir="/Users/mhdang/Desktop/Fairnes/FAIRPSDDExp/aaai2021/synthetic_fair_10cv_0905/"
-    for num_X in 10:30
-        for fold in 1 : 10
-            configs = read_all_exp_configs(indir; given=Dict("dataset"=>name, "fold"=>fold, "struct_type"=>"FairPC", "num_X"=>num_X))
-            @assert length(configs) == 1
-            config = configs[1]
-            pcfile = joinpath(config["root"], "struct", "max-ll")
-            cp(joinpath(pcfile, "$name.psdd"), joinpath(outdir, "$name-$num_X-$fold.psdd"))
-            cp(joinpath(pcfile, "$name.vtree"), joinpath(outdir, "$name-$num_X-$fold.vtree"))
-        end
-    end
-end
 
 function fair_pc_para_learn_from_file(name, SV;
                                         indir="./circuits",

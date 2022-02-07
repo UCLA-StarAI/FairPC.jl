@@ -26,40 +26,9 @@ end
 One Expectation Maximization step
 """
 function one_step_EM_estimate_parameter(pc::ProbCircuit, train_x::DataFrame; pseudocount::Float64=1.0)
-    # # expectation step
-    # compute_exp_flows(pc, train_x)
-
-    # # maximization step
-    # estimate_parameters_cached(pc; pseudocount=pseudocount)
-
     estimate_parameters_em!(pc, train_x; pseudocount=pseudocount) 
-    
-    # TODO
-    #   hyper
-    #   GPU
 end
 
-# # copied from ProbabilisticCircuits deprecated estimate_parameters!
-# """
-# Estimate parameters given (expected) circuits flows
-# """
-# function estimate_parameters_cached(pc::ProbCircuit; pseudocount::Float64)
-#     foreach(pc) do pn
-#         if is⋁gate(pn)
-#             if num_children(pn) == 1
-#                 pn.log_probs .= 0.0
-#             else
-#                 smoothed_flow = Float64(sum(exp.(get_exp_downflow(pn)))) + pseudocount
-#                 uniform_pseudocount = pseudocount / num_children(pn)
-#                 children_flows = map(c -> sum(exp.(get_exp_downflow(pn, c))), children(pn))
-#                 @. pn.log_probs = log((children_flows + uniform_pseudocount) / smoothed_flow)
-#                 @assert isapprox(sum(exp.(pn.log_probs)), 1.0, atol=1e-6) "Parameters do not sum to one locally"
-#                 # normalize away any leftover error
-#                 pn.log_probs .-= logsumexp(pn.log_probs)
-#             end
-#         end
-#     end
-# end
 
 """
 Initialize the parameters with algorithm `alg`
