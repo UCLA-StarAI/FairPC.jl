@@ -2,6 +2,8 @@ using Plots
 using Statistics
 using Logging
 using Suppressor
+using Plots: plot, plot!
+using GR
 export OPTS, TRAIN_HEADER, CPT_HEADER, PREDICT_HEADER, PREDICT_EXAMPLE_HEADER, arg2str,
 log_dataset_property, read_dict_from_csv, save_as_csv, plot_dict, scatter_dict4, 
 dict_init, dict_append!, dict_push!, dict_avg, log_init, log_per_iter, reload_learned_pc
@@ -59,7 +61,7 @@ end
 Read CSV file, return a dictionary
 """
 function read_dict_from_csv(filename; labels=nothing, delim=",")
-    dataframe = CSV.read(filename; header=true, delim=delim)
+    dataframe = CSV.read(filename, DataFrame; header=true, delim=delim)
     header = map(x -> String(x), names(dataframe))
     result = Dict()
     if isnothing(labels)
@@ -128,7 +130,7 @@ function plot_dict(dict; opts, debug=false, seriestype = :line)
     end
 
     if haskey(opts, "filename")
-        savefig(p, opts["filename"])
+        Plots.savefig(p, opts["filename"])
     end
     if debug
         # @info "Success"
@@ -148,14 +150,14 @@ function scatter_dict4(dict; opts, debug=false, seriestype = :line)
         @info i 
         x = xs[i]
         y = opts["ys"][i]
-        push!(ps,plot(x, dict[y], seriestype=seriestype, xlabel=xlabel, ylabel=ylabel,
+        push!(ps, plot(x, dict[y], seriestype=seriestype, xlabel=xlabel, ylabel=ylabel,
             markersize=2, markershape=:circle, markerstrokecolor=:auto, markeralpha = 0.5, label=y, title=opts["title"]))
     end
     @info "start"
 
     p = plot(ps[1], ps[2], ps[3], ps[4], layout=(2,2), title=opts["title"])
     if haskey(opts, "filename")
-        savefig(p, opts["filename"])
+        Plots.savefig(p, opts["filename"])
     end
     if debug
         # @info "Success"
@@ -285,9 +287,9 @@ function log_per_iter(pc::StructType, data::FairDataset, results;
     end
     # ll
     if pc isa LatentStructType
-        train_ll = marginal_log_likelihood_per_instance(pc.pc, opts["train_x"].data)
-        valid_ll = marginal_log_likelihood_per_instance(pc.pc, opts["valid_x"].data)
-        test_ll = marginal_log_likelihood_per_instance(pc.pc, opts["test_x"].data)
+        train_ll = marginal(pc.pc, opts["train_x"].data)
+        valid_ll = marginal(pc.pc, opts["valid_x"].data)
+        test_ll = marginal(pc.pc, opts["test_x"].data)
     else
         @assert pc isa NonLatentStructType
         train_ll = log_likelihood_per_instance(pc.pc, opts["train_x"].data)
@@ -431,8 +433,7 @@ function save_with_best(results, key, dirname, fairpc::StructType; f=findmax, ou
         results[dirname]["pc"] = pc
         results[dirname]["vtree"] = vtree
         results[dirname]["id"] = best_id
-        save_circuit(joinpath(outdir, dirname, "$name.psdd"), pc, vtree)
-        save_vtree(vtree, joinpath(outdir, dirname, "$name.vtree"))
+        write((joinpath(outdir, dirname, "$name.psdd"),joinpath(outdir, dirname, "$name.vtree")), pc)
     end
     best_id, cur_id
 end
@@ -441,12 +442,12 @@ function save_pc(results::Dict, pc::StructType; outdir, name)
     if !isdir(outdir)
         mkpath(outdir)
     end
-    save_circuit(joinpath(outdir, "$name.psdd"), pc.pc, pc.vtree)
-    save(pc.vtree, joinpath(outdir, "$name.vtree"))
+    write((joinpath(outdir, dirname, "$name.psdd"),joinpath(outdir, dirname, "$name.vtree")), pc.pc)
 end
 function reload_learned_pc(results, key; opts, name)
     _, _, id = results[key]
-    pc, vtree = load_struct_prob_circuit(joinpath(opts["outdir"], key, "$name.psdd"), joinpath(opts["outdir"], key, "$name.vtree"))
+    pc = read((joinpath(opts["outdir"], key, "$name.psdd"), joinpath(opts["outdir"], key, "$name.vtree")), StructProbCircuit)
+    vtree = pc.vtree
     # @info "Pick the circuit with best $key"
     # @info id
     pc, vtree

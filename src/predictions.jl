@@ -90,6 +90,9 @@ end
 Save prediction results for every example
 """
 function prediction_per_example(fairpc::StructType, fairdata::FairDataset; use_fair_label=false)
+    @inline get_node_id(id::⋁NodeIds) = id.node_id
+    @inline get_node_id(id::⋀NodeIds) = @assert false
+
     results = Dict()
     header = fairdata.header
     SV = fairdata.SV
@@ -108,20 +111,26 @@ function prediction_per_example(fairpc::StructType, fairdata::FairDataset; use_f
     if fairpc isa LatentStructType
         data = reset_end_two_missing(data)
     end
-    compute_exp_flows(fairpc.pc, data)
+
+    _, flows, node2id = marginal_flows(fairpc.pc, data)
+    # compute_exp_flows(fairpc.pc, data)
 
     # P_D
-    D = node_D(fairpc)
-    n_D = node_not_D(fairpc)
-    P_D = exp.(get_exp_downflow(D))
-    @assert all(P_D .+ exp.(get_exp_downflow(n_D)) .≈ 1.0)
+    D = get_node_id(node2id[node_D(fairpc)])
+    n_D = get_node_id(node2id[node_not_D(fairpc)])
+    P_D = exp.(flows[:, D])
+    # @assert all(flows[:, D] .<= 0.0)
+    @assert all(P_D .+ exp.(flows[:, n_D]) .≈ 1.0)
+    P_D = min.(1.0, P_D)
+
 
     if fairpc isa LatentStructType
-        Df = node_Df(fairpc)
-        n_Df = node_not_Df(fairpc)    
-        P_Df = exp.(get_exp_downflow(Df))
-        @assert all(P_Df .+ exp.(get_exp_downflow(n_Df)) .≈ 1.0)
-    
+        Df = get_node_id(node2id[node_Df(fairpc)])
+        n_Df = get_node_id(node2id[node_not_Df(fairpc)])
+        P_Df = exp.(flows[:, Df])
+        @assert all(P_Df .+ exp.(flows[:, n_Df]) .≈ 1.0)
+        # @assert all(flows[:, Df] .<= 0.0)
+        P_Df = min.(1.0, P_Df)    
     else
         P_Df = Vector{Missing}(missing, length(P_D))
     end
@@ -177,6 +186,8 @@ function cross_entropy(actual, predicted)
     actual = Float64.(actual)
     predicted = Float64.(predicted)
     @assert length(actual) == length(predicted)
+    @assert all(predicted .> 0)
+    @assert all(predicted .<= 1)
     CE = - sum(xlogy.(actual, predicted) + xlogy.(1 .- actual, 1 .- predicted)) / length(actual)
 end
 
@@ -208,12 +219,12 @@ function confusion_matrix(actual, predicted)
     Dict{Any, Any}("TP"=>TP, "TN"=>TN, "FP"=>FP, "FN"=>FN)
 end
 
-function discrimination_score(prob::Vector{Float64}, S_label::Union{Vector{Bool}, BitVector})
+function discrimination_score(prob::Vector{<:AbstractFloat}, S_label::Union{Vector{Bool}, BitVector})
     @assert length(prob) == length(S_label)
     mean(prob[S_label]) - mean(prob[.!S_label])
 end
 
-function discrimination_score_from_predicted_label(prob::Vector{Float64}, S_label::Union{Vector{Bool}, BitVector})
+function discrimination_score_from_predicted_label(prob::Vector{<:AbstractFloat}, S_label::Union{Vector{Bool}, BitVector})
     @assert length(prob) == length(S_label)
     predicted = Bool.(prob .> 0.5)
     sum(predicted .& S_label) / sum(S_label) - sum(predicted .& .!S_label) / sum(.!S_label)

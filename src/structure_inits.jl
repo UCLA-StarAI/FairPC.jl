@@ -27,7 +27,7 @@ function initial_structure(::Type{FairPC}, fairpc::StructType; init_alg)
     vtree.parent = nothing
     S = fairpc.S
     D = fairpc.D
-    old_p = exp.(pc0.log_thetas)
+    old_p = exp.(pc0.log_probs)
 
     # data
     pcs = non_sensitive_sub_circuits(fairpc)
@@ -59,7 +59,7 @@ function init_sub_circuits(T::Type{<:StructType}, sub_train::DataFrame, i2v; pse
         
         clt = learn_chow_liu_tree(sub_train)
         if isnothing(vtree) # all clts decorate on same vtree
-            vtree = learn_vtree_from_clt(clt)
+            vtree = learn_vtree_from_clt(clt, vtree_mode="balanced")
         end
 
         if T in [FairPC, NlatPC]     
@@ -70,7 +70,7 @@ function init_sub_circuits(T::Type{<:StructType}, sub_train::DataFrame, i2v; pse
             # TODO rm bias terms
         end
         pc = ProbCircuit(lc)
-        estimate_parameters(pc, sub_train; pseudocount=pseudocount)
+        estimate_parameters!(pc, sub_train; pseudocount=pseudocount)
         
         replace_index_with_variables!(pc, i2v)
         push!(pcs, pc)
@@ -105,24 +105,24 @@ function add_top_layer(::Type{<:LatentStructType}, pcs::Vector{<:StructProbCircu
     neg_n_S = compile(T, v_S, - var2lit(S))
 
     ## right
-    D_ors = map(i -> disjoin([pos_n_D, neg_n_D]; use_vtree=v_D), 1 : 4)
-    foreach(x -> x.log_thetas .= log(0.25), D_ors)
-    right_ands = map(c -> conjoin([c[1], c[2]]; use_vtree=v_right), zip(D_ors, pcs))
-    right_ors = map(i -> disjoin([i]; use_vtree=v_right), right_ands)
-    foreach(x -> x.log_thetas .= 0.0, right_ors)
+    D_ors = map(i -> summate([pos_n_D, neg_n_D]; use_vtree=v_D), 1 : 4)
+    foreach(x -> x.log_probs .= log(0.25), D_ors)
+    right_ands = map(c -> multiply([c[1], c[2]]; use_vtree=v_right), zip(D_ors, pcs))
+    right_ors = map(i -> summate([i]; use_vtree=v_right), right_ands)
+    foreach(x -> x.log_probs .= 0.0, right_ors)
 
     ## left
     childrens = [[pos_n_Df, pos_n_S], [pos_n_Df, neg_n_S],
                  [neg_n_Df, pos_n_S], [neg_n_Df, neg_n_S]]
-    left_ands = map(c -> conjoin(c; use_vtree=v_left), childrens)
-    left_ors = map(and -> disjoin([and]; use_vtree=v_left), left_ands)
-    foreach(x -> x.log_thetas .= 0.0, left_ors)
+    left_ands = map(c -> multiply(c; use_vtree=v_left), childrens)
+    left_ors = map(and -> summate([and]; use_vtree=v_left), left_ands)
+    foreach(x -> x.log_probs .= 0.0, left_ors)
 
     ## root
-    ands = map(or -> conjoin(collect(or); use_vtree=v_root), zip(left_ors, right_ors))
-    pc_root = disjoin(ands; use_vtree=v_root)
+    ands = map(or -> multiply(collect(or); use_vtree=v_root), zip(left_ors, right_ors))
+    pc_root = summate(ands; use_vtree=v_root)
     pc_new = pc_root
-    pc_root.log_thetas .= log(0.25)
+    pc_root.log_probs .= log(0.25)
 
     return pc_new, vtree_new
 end
@@ -152,16 +152,16 @@ function add_top_layer(::Type{NlatPC}, pcs::Vector{StructProbCircuit}, vtree::Pl
     ## left
     childrens = [[pos_n_D, pos_n_S], [pos_n_D, neg_n_S],
                  [neg_n_D, pos_n_S], [neg_n_D, neg_n_S]]
-    left_ands = map(c -> conjoin(c; use_vtree=v_left), childrens)
-    left_ors = map(and -> disjoin([and]; use_vtree=v_left), left_ands)
+    left_ands = map(c -> multiply(c; use_vtree=v_left), childrens)
+    left_ors = map(and -> summate([and]; use_vtree=v_left), left_ands)
     @assert left_ors isa Vector
-    foreach(x -> x.log_thetas .= 0.0, left_ors)
+    foreach(x -> x.log_probs .= 0.0, left_ors)
 
     ## root
-    ands = map(or -> conjoin(collect(or); use_vtree=v_root), zip(left_ors, right_ors))
-    pc_root = disjoin(ands; use_vtree=v_root)
+    ands = map(or -> multiply(collect(or); use_vtree=v_root), zip(left_ors, right_ors))
+    pc_root = summate(ands; use_vtree=v_root)
     pc_new = pc_root
-    pc_root.log_thetas .= log(0.25)
+    pc_root.log_probs .= log(0.25)
 
     return pc_new, vtree_new
 end
@@ -186,14 +186,14 @@ function add_top_layer(::Type{TwoNB}, pcs::Vector{StructProbCircuit}, vtree::Pla
     lits = [pos_n_D, neg_n_D, pos_n_S, neg_n_S]
 
      ## right
-    D_ands = map(c -> conjoin([c[1], c[2]]; use_vtree=v_right), zip([pos_n_D, neg_n_D, pos_n_D, neg_n_D], pcs))
-    D_ors = map(i -> disjoin([D_ands[i], D_ands[i+1]]; use_vtree=v_right), [1, 3])
-    foreach(x -> x.log_thetas .= log(0.5), D_ors)
+    D_ands = map(c -> multiply([c[1], c[2]]; use_vtree=v_right), zip([pos_n_D, neg_n_D, pos_n_D, neg_n_D], pcs))
+    D_ors = map(i -> summate([D_ands[i], D_ands[i+1]]; use_vtree=v_right), [1, 3])
+    foreach(x -> x.log_probs .= log(0.5), D_ors)
 
     ## left
-    ands = map(c -> conjoin(c; use_vtree=v_root), [[pos_n_S, D_ors[1]], [neg_n_S, D_ors[2]]])
-    pc_root = disjoin(ands, use_vtree=v_root)
-    pc_root.log_thetas .= log(0.5)
+    ands = map(c -> multiply(c; use_vtree=v_root), [[pos_n_S, D_ors[1]], [neg_n_S, D_ors[2]]])
+    pc_root = summate(ands, use_vtree=v_root)
+    pc_root.log_probs .= log(0.5)
     pc_new = pc_root
 
     
@@ -226,7 +226,7 @@ function replace_index_with_variables!(clt::ProbCircuit, i2v::Vector{Var})
     end
 end
 
-using ProbabilisticCircuits.StructureLearner: eFlow, vMI
+using ProbabilisticCircuits: eFlow, vMI
 """
 One structure update step 
 """
@@ -240,19 +240,36 @@ function split_step(fairpc::StructType, train_x::DataFrame; pick_edge="eFlow", p
     if isempty(candidates)
         return missing, true
     end
-    compute_flows(pc, train_x)
 
-    edge, flow = eFlow(candidates)
+    values, flows, node2id = satisfies_flows(pc, train_x; weights = nothing)
+
+    if isgpu(values)
+        values = to_cpu(values)
+    end
+    if isgpu(flows)
+        flows = to_cpu(flows)
+    end
+    
+    if pick_edge == "eFlow"
+        edge, flow = eFlow(values, flows, candidates, node2id)
+    elseif pick_edge == "eRand"
+        edge = eRand(candidates)
+    else
+        error("Heuristics $pick_edge to pick edge is undefined.")
+    end
 
     or, and = edge
-    lits = collect(Set{Lit}(scope[and]))
-    vars =  Var.(intersect(filter(l -> l > 0, lits), - filter(l -> l < 0, lits)))
+    vars = Var.(collect(scope[and]))
 
-    var, score = vMI(edge, vars, train_x)
+    if pick_var == "vMI"
+        var, score = vMI(values, flows, edge, vars, train_x, node2id)
+    elseif pick_var == "vRand"
+        var = vRand(vars)
+    end
 
     pc_new, _ = split(pc, edge, var; depth=split_depth, sanity_check=sanity_check)
 
-    estimate_parameters(pc_new, train_x; pseudocount=pseudocount)
+    estimate_parameters!(pc_new, train_x; pseudocount=pseudocount)
     fairpc.pc = pc_new
     fairpc, false
 end

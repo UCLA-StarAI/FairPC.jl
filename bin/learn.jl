@@ -37,11 +37,11 @@ function main()
     # io = open(joinpath(outdir, "config.log"), "w")
     # logger = SimpleLogger(io)
     # global_logger(logger)
-    # arg_str = arg2str(args)
+    arg_str = arg2str(args)
     # @info arg_str
     # flush(io)
 
-    # try
+    try
         @suppress_out learn(name, SV;
             outdir=outdir,
             save_step=save_step,
@@ -67,12 +67,12 @@ function main()
             # for synthetic data
             num_X=num_X)
 
-    # catch e
-    #     @error "Error! Program terminated unexpectedly."
-    #     with_logger(SimpleLogger(stdout)) do
-    #         @error "Error! Program terminated unexpectedly in args.\n" arg_str
-    #     end
-    # end
+    catch e
+        @error "Error! Program terminated unexpectedly."
+        with_logger(SimpleLogger(stdout)) do
+            @error "Error! Program terminated unexpectedly in args.\n" arg_str
+        end
+    end
 
     # @info "Learn Fair PSDD ends!"
 end

@@ -93,7 +93,7 @@ function parse_cmd_line()
         "--cmd"
             help = "Command line execuation file"
             arg_type = String
-            default = "julia"
+            default = "julia --project"
         "--set_id"
             arg_type = Bool
             default = true

@@ -1,6 +1,7 @@
 using DataFrames
 using CSV
 using Random
+using Missings
 export DATASET_NAMES, DATASET2DECISION, FairDataset, convert2latent, convert2nonlatent,
 data_without_latent, load_data, all_dataset_property, remove_variables, data_given_constraint, 
 add_missing_Df_label, remove_synthetic_Df_label, remove_missing_Df_label, reset_end_missing, 
@@ -56,6 +57,7 @@ function FairDataset(T::Type{<:StructType}, name, header, data, SV)
     elseif T <: NonLatentStructType
         is_latent = false
         Df = nothing
+        data = DataFrame(BitArray(Tables.matrix(data)), :auto)
     end
     FairDataset(name, data, header, SV, S, D, Df, D_label, true_label, is_latent)
 end
@@ -113,17 +115,17 @@ function load_data(name, T, SV; data_dir="./data/processed_data/", data_type=Boo
         filename = "$name"
     end
 
-    dataframe = CSV.read(data_path; header=true, truestrings=["1"], falsestrings=["0"], type=data_type, strict=true)
+    dataframe = CSV.read(data_path, DataFrame; header=true, truestrings=["1"], falsestrings=["0"], types=data_type, strict=true)
     N = size(dataframe)[1]
     
-    train_ids = collect(skipmissing(CSV.read(joinpath(id_dir, filename, "train_ids.csv"); header=true, strict=true)[:, fold]))
-    valid_ids = collect(skipmissing(CSV.read(joinpath(id_dir, filename, "valid_ids.csv"); header=true, strict=true)[:, fold]))
-    test_ids = collect(skipmissing(CSV.read(joinpath(id_dir, filename, "test_ids.csv"); header=true, strict=true)[:, fold]))
+    train_ids = collect(skipmissing(CSV.read(joinpath(id_dir, filename, "train_ids.csv"), DataFrame; header=true, strict=true)[:, fold]))
+    valid_ids = collect(skipmissing(CSV.read(joinpath(id_dir, filename, "valid_ids.csv"), DataFrame; header=true, strict=true)[:, fold]))
+    test_ids = collect(skipmissing(CSV.read(joinpath(id_dir, filename, "test_ids.csv"), DataFrame; header=true, strict=true)[:, fold]))
 
     @assert isempty(intersect(train_ids, valid_ids)) && isempty(intersect(train_ids, test_ids))  && isempty(intersect(test_ids, valid_ids)) 
     
     dataframes = dataframe[train_ids, :], dataframe[valid_ids, :], dataframe[test_ids, :]
-    datas = [Base.convert(Matrix{data_type}, dataframe) for dataframe in dataframes]
+    datas = [BitArray(Tables.matrix(dataframe)) for dataframe in dataframes]
     header = map(x -> String(x), names(dataframe))
     
     if name != "synthetic"
@@ -138,8 +140,9 @@ function load_data(name, T, SV; data_dir="./data/processed_data/", data_type=Boo
     else
         datas2 = datas
     end
-    train_x, valid_x, test_x = DataFrame(datas2[1]), DataFrame(datas2[2]), DataFrame(datas2[3])
+    train_x, valid_x, test_x = DataFrame(datas2[1], :auto), DataFrame(datas2[2], :auto), DataFrame(datas2[3], :auto)
 
+    
     train_x = FairDataset(T, name, header, train_x, SV)
     valid_x = FairDataset(T, name, header, valid_x, SV)
     test_x = FairDataset(T, name, header, test_x, SV)
@@ -151,12 +154,12 @@ function load_data_test(name, T, SV; data_dir="./data/test_adult/fold-1", data_t
     @assert name in DATASET_NAMES "Dataset $name not found in directory $data_dir"
 
 
-    # dataframe = CSV.read(data_path; header=true, truestrings=["1"], falsestrings=["0"], type=data_type, strict=true)
+    # dataframe = CSV.read(data_path, DataFrame; header=true, truestrings=["1"], falsestrings=["0"], type=data_type, strict=true)
     # N = size(dataframe)[1]
     
-    train_x = CSV.read(joinpath(data_dir, "adult.train.csv"); header=true, strict=true)
-    valid_x = CSV.read(joinpath(data_dir, "adult.valid.csv"); header=true, strict=true)
-    test_x = CSV.read(joinpath(data_dir, "adult.test.csv"); header=true, strict=true)
+    train_x = CSV.read(joinpath(data_dir, "adult.train.csv"), DataFrame; header=true, strict=true)
+    valid_x = CSV.read(joinpath(data_dir, "adult.valid.csv"), DataFrame; header=true, strict=true)
+    test_x = CSV.read(joinpath(data_dir, "adult.test.csv"), DataFrame; header=true, strict=true)
 
     # @assert isempty(intersect(train_ids, valid_ids)) && isempty(intersect(train_ids, test_ids))  && isempty(intersect(test_ids, valid_ids)) 
     
@@ -176,7 +179,7 @@ function load_data_test(name, T, SV; data_dir="./data/test_adult/fold-1", data_t
     else
         datas2 = datas
     end
-    train_x, valid_x, test_x = DataFrame(datas2[1]), DataFrame(datas2[2]), DataFrame(datas2[3])
+    train_x, valid_x, test_x = DataFrame(datas2[1], :auto), DataFrame(datas2[2], :auto), DataFrame(datas2[3], :auto)
 
     train_x = FairDataset(T, name, header, train_x, SV)
     valid_x = FairDataset(T, name, header, valid_x, SV)
@@ -195,7 +198,7 @@ function gen_synthetic_data(;outdir="./data/synthetic-test", num_X=2, num_sample
     if !isdir(outdir)
         mkpath(outdir)
     end
-    data = DataFrame(BitMatrix(rand(Bool, num_samples, num_X + 2)))
+    data = DataFrame(BitMatrix(rand(Bool, num_samples, num_X + 2)), :auto)
     SV = "S"
     header = [[SV]; ["X$i" for i in 1 : num_X]; ["D"]]
     T = FairPC
@@ -205,12 +208,12 @@ function gen_synthetic_data(;outdir="./data/synthetic-test", num_X=2, num_sample
     pc = fairpc.pc
 
     # sample
-    gen_data = DataFrame(hcat([sample(pc) for _ in 1 : num_samples]...)')
+    gen_data = DataFrame(hcat([sample(pc) for _ in 1 : num_samples]...)', :auto)
     CSV.write(joinpath(outdir, "$num_X.csv"), Int8.(gen_data); header=[header;["Df"]])
 end
 
-function gen_synthetic_data_all(num_Xs=10:30)
-    Random.seed!(1337)
+function gen_synthetic_data_all(num_Xs=10:30; seed=1337)
+    Random.seed!(seed)
     for num_X in num_Xs
         gen_synthetic_data(num_X=num_X)
     end
@@ -253,7 +256,7 @@ the variable `variable` has value `value`
 function data_given_constraint(data::DataFrame; given=Dict(), type, keep_var=true, keep_Df=true)
     n = num_features(data)
     m = num_examples(data)
-    mat = deepcopy(convert(Matrix, data))
+    mat = copy(Matrix(data))
     vars = trues(n)
     keep = trues(m)
     for (variable, value) in given
@@ -269,15 +272,15 @@ function data_given_constraint(data::DataFrame; given=Dict(), type, keep_var=tru
     if !keep_Df
         vars[end] = false
     end
-    DataFrame(type.(mat[keep, vars]))
+    DataFrame(type.(mat[keep, vars]), :auto)
 end
 
 """
 Add Df = -1 to all examples
 """
 function add_missing_Df_label(data::DataFrame)
-    m = copy(convert(Matrix{Int8}, data))
-    DataFrame(hcat(m, - ones(Int8, num_examples(data), 1)))
+    df = DataFrame(missings((num_examples(data), 1)), :auto)
+    hcat(data, df;makeunique=true)
 end
 
 """
@@ -288,33 +291,33 @@ function remove_synthetic_Df_label(data::DataFrame)
 end
 
 function remove_missing_Df_label(data::DataFrame)
-    copy(Bool.(data[:, 1:end-1]))
+    copy(data[:, 1:end-1])
 end
 
 """
 Set the last column to -1, used in prediction
 """
 function reset_end_missing(data::DataFrame)
-    m = Int8.(copy(data))
-    m[:, end] .= -1
-    DataFrame(m)
+    m = copy(Matrix{Union{Missing,Bool}}(data))
+    m[:, end] .= missing
+    DataFrame(m, :auto)
 end
 
 
 function reset_end_two_missing(data::DataFrame)
-    m = Int8.(copy(data))
-    m[:, end-1] .= -1
-    DataFrame(m)
+    m = copy(Matrix{Union{Missing,Bool}}(data))
+    m[:, end-1] .= missing
+    DataFrame(m, :auto)
 end
 
 """
 Flip the coin for every bit in the data set
 """
 function flip_coin(data::DataFrame; keep_prob)::DataFrame
-    m = copy(convert(Matrix{Int8}, data))
+    m = copy(Matrix{Union{Missing,Bool}}(data))
     flag = rand(num_examples(data), num_features(data)) .<= 1 - keep_prob
-    m[flag] .= -1
-    DataFrame(m)
+    m[flag] .= missing
+    DataFrame(m, :auto)
 end
 
 function flip_coin(T, data::FairDataset; keep_prob)::FairDataset

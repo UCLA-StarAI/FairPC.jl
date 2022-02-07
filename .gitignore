@@ -1,11 +1,12 @@
 .vscode/
 exp-results/
+exp/
 summary/
 .idea
 *.iml
 sh/
 logs/
-.DS_Store
+*.DS_Store
 *.pyc
 *.data
 *.test

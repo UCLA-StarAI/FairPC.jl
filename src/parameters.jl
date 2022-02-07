@@ -12,7 +12,7 @@ function parameter_update(pc::StructType, train_x::FairDataset; pseudocount)
     if pc isa LatentStructType
         one_step_EM_estimate_parameter(pc.pc, train_x.data; pseudocount=pseudocount)
     elseif pc isa NonLatentStructType
-        estimate_parameters(pc.pc, train_x.data; pseudocount=pseudocount)
+        estimate_parameters!(pc.pc, train_x.data; pseudocount=pseudocount)
     else
         error("")
     end
@@ -26,34 +26,40 @@ end
 One Expectation Maximization step
 """
 function one_step_EM_estimate_parameter(pc::ProbCircuit, train_x::DataFrame; pseudocount::Float64=1.0)
-    # expectation step
-    compute_exp_flows(pc, train_x)
+    # # expectation step
+    # compute_exp_flows(pc, train_x)
 
-    # maximization step
-    estimate_parameters_cached(pc; pseudocount=pseudocount)
+    # # maximization step
+    # estimate_parameters_cached(pc; pseudocount=pseudocount)
+
+    estimate_parameters_em!(pc, train_x; pseudocount=pseudocount) 
+    
+    # TODO
+    #   hyper
+    #   GPU
 end
 
-# copied from ProbabilisticCircuits deprecated estimate_parameters
-"""
-Estimate parameters given (expected) circuits flows
-"""
-function estimate_parameters_cached(pc::ProbCircuit; pseudocount::Float64)
-    foreach(pc) do pn
-        if is⋁gate(pn)
-            if num_children(pn) == 1
-                pn.log_thetas .= 0.0
-            else
-                smoothed_flow = Float64(sum(exp.(get_exp_downflow(pn)))) + pseudocount
-                uniform_pseudocount = pseudocount / num_children(pn)
-                children_flows = map(c -> sum(exp.(get_exp_downflow(pn, c))), children(pn))
-                @. pn.log_thetas = log((children_flows + uniform_pseudocount) / smoothed_flow)
-                @assert isapprox(sum(exp.(pn.log_thetas)), 1.0, atol=1e-6) "Parameters do not sum to one locally"
-                # normalize away any leftover error
-                pn.log_thetas .-= logsumexp(pn.log_thetas)
-            end
-        end
-    end
-end
+# # copied from ProbabilisticCircuits deprecated estimate_parameters!
+# """
+# Estimate parameters given (expected) circuits flows
+# """
+# function estimate_parameters_cached(pc::ProbCircuit; pseudocount::Float64)
+#     foreach(pc) do pn
+#         if is⋁gate(pn)
+#             if num_children(pn) == 1
+#                 pn.log_probs .= 0.0
+#             else
+#                 smoothed_flow = Float64(sum(exp.(get_exp_downflow(pn)))) + pseudocount
+#                 uniform_pseudocount = pseudocount / num_children(pn)
+#                 children_flows = map(c -> sum(exp.(get_exp_downflow(pn, c))), children(pn))
+#                 @. pn.log_probs = log((children_flows + uniform_pseudocount) / smoothed_flow)
+#                 @assert isapprox(sum(exp.(pn.log_probs)), 1.0, atol=1e-6) "Parameters do not sum to one locally"
+#                 # normalize away any leftover error
+#                 pn.log_probs .-= logsumexp(pn.log_probs)
+#             end
+#         end
+#     end
+# end
 
 """
 Initialize the parameters with algorithm `alg`
@@ -62,10 +68,10 @@ function random_parameters(pc::ProbCircuit)
     foreach(pc) do n
         if is⋁gate(n) 
             if num_children(n) == 1
-                n.log_thetas .= 0.0
+                n.log_probs .= 0.0
             else
                 thetas = LinearAlgebra.normalize(rand(Float64, num_children(n)), 1.0)
-                n.log_thetas .= log.(thetas)
+                n.log_probs .= log.(thetas)
             end
         end
     end
@@ -80,7 +86,7 @@ function initial_parameters(fairpc::StructType, fairdata::FairDataset; para_alg,
     data = fairdata.data    
     if para_alg == "estimate"
         @assert fairpc isa NonLatentStructType
-        estimate_parameters(pc, data; pseudocount=pseudocount)
+        estimate_parameters!(pc, data; pseudocount=pseudocount)
     
     elseif para_alg == "rand"
         random_parameters(pc)
@@ -115,9 +121,9 @@ function initial_parameters(fairpc::StructType, fairdata::FairDataset; para_alg,
         root_thetas = LinearAlgebra.normalize(flow_cnts .+ pseudocount, 1.0)
         D_counts = [[flow_cnts[1], 0], [flow_cnts[2], 0], [0, flow_cnts[3]], [0, flow_cnts[4]]]
         D_thetas = map(x->LinearAlgebra.normalize(x .+ pseudocount), D_counts)
-        pc.log_thetas .= log.(root_thetas)
+        pc.log_probs .= log.(root_thetas)
         for (n, theta) in zip(nodes_D_sum(fairpc), D_thetas)
-            n.log_thetas .= log.(theta)
+            n.log_probs .= log.(theta)
         end
 
     elseif para_alg == "non"
@@ -161,10 +167,10 @@ function initial_parameters(fairpc::StructType, fairdata::FairDataset; para_alg,
         pS = num_S / num
         pDf = num_Df / num
         @assert pS >= 0 && pS <= 1 && pDf >= 0 && pDf <= 1
-        pc.log_thetas .= log.([pDf * pS, pDf * (1 - pS), (1 - pDf) * pS, (1 - pDf) * (1 - pS)])
+        pc.log_probs .= log.([pDf * pS, pDf * (1 - pS), (1 - pDf) * pS, (1 - pDf) * (1 - pS)])
 
         for (pn, p) in zip(nodes_D_sum(fairpc), PD)
-            pn.log_thetas .= log.([p, 1 - p])
+            pn.log_probs .= log.([p, 1 - p])
         end
    
     end
@@ -179,11 +185,11 @@ end
 Pamater tie between Df and S, Df is independant of S
 """
 function parameter_tie(pc::ProbCircuit)
-    thetas = exp.(pc.log_thetas)
+    thetas = exp.(pc.log_probs)
     @assert length(thetas) == 4
     p1, p2 = thetas[1] + thetas[2], thetas[1] + thetas[3]
     thetas2 = [p1 * p2, p1 * (1 - p2), (1 - p1) * p2, (1 - p1) * (1 - p2)]
-    pc.log_thetas .= log.(thetas2)
+    pc.log_probs .= log.(thetas2)
 end
 
 """
@@ -193,11 +199,11 @@ function reset_prob(fairpc::StructType, prob::Dict;init_X=true, prior=0.5)
     # set pDf, pS
     pDf, pS = prob["Df"], prob["S"]
     pc_root = [pDf * pS, pDf * (1 - pS), (1 - pDf) * pS, (1 - pDf) * (1 - pS)]
-    fairpc.pc.log_thetas .= log.(pc_root)
+    fairpc.pc.log_probs .= log.(pc_root)
 
     # set pD
     map(zip(nodes_D_sum(fairpc), [prob["D|Df,S"], prob["D|Df,notS"], prob["D|notDf,S"], prob["D|notDf,notS"]])) do (pn, p)
-        pn.log_thetas .= log.([p, 1 - p])
+        pn.log_probs .= log.([p, 1 - p])
     end
 
     # rand set pX
@@ -212,13 +218,13 @@ function reset_prob(fairpc::StructType, prob::Dict;init_X=true, prior=0.5)
             cnt += 1
             foreach(pc) do n
                 if is⋁gate(n) && num_children(n) == 1
-                    n.log_thetas .= 0.0
+                    n.log_probs .= 0.0
                 elseif is⋁gate(n)
                     @assert num_children(n) == 2
                     p = rand(num_children(n)) .+ prior_vec
                     theta = LinearAlgebra.normalize(p, 1)
                     println(theta)
-                    n.log_thetas .= log.(theta)
+                    n.log_probs .= log.(theta)
                 end
             end
         end
@@ -237,24 +243,24 @@ function cpt(fairpc::StructType)
     end
 
     if fairpc isa TwoNB
-        PS = exp(pc.log_thetas[1])
+        PS = exp(pc.log_probs[1])
         sums = right_sums(pc)
         @assert length(sums) == 2
-        PD1 = exp(sums[1].log_thetas[1])
-        PD2 = exp(sums[2].log_thetas[1])
+        PD1 = exp(sums[1].log_probs[1])
+        PD2 = exp(sums[2].log_probs[1])
         results["P(S)"] = PS
         results["P(D)"] = PS * PD1 + (1 - PS) * PD2
         return results
     end
     
-    thetas = exp.(pc.log_thetas)
+    thetas = exp.(pc.log_probs)
     p1, p2 = thetas[1] + thetas[2], thetas[1] + thetas[3]
 
     if fairpc isa LatentStructType
         log_PDs = map(nodes_D_sum(fairpc)) do pn
-            pn.log_thetas[1]
+            pn.log_probs[1]
         end
-        PD = sum(exp.(pc.log_thetas) .* exp.(log_PDs))
+        PD = sum(exp.(pc.log_probs) .* exp.(log_PDs))
         results["P(Df)"] = p1
         results["P(S)"] = p2
         results["P(D)"] = PD
